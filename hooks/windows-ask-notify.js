@@ -52,14 +52,16 @@ process.stdin.on('end', () => {
             } else if (typeof toolArgs.question === 'string') {
                 question = toolArgs.question;
             }
-            notificationTitle = "Antigravity: Question";
+            notificationTitle = "Antigravity CLI: Question";
             notificationText = (question || "Waiting for your input").trim()
-                .replace(/\s\s+/g, ' ')
-                .substring(0, 120);
+                .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+                .replace(/`([^`]+)`/g, '$1')
+                .replace(/\s+/g, ' ')
+                .substring(0, 100);
         } 
         // Pedido de permissão para outras ferramentas
         else if (notificationType === 'ToolPermission') {
-            notificationTitle = "Antigravity: Permission";
+            notificationTitle = "Antigravity CLI: Permission";
             notificationText = `Do you want to execute ${toolName || 'tool'}?`;
         }
         else {

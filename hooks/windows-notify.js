@@ -66,35 +66,46 @@ process.stdin.on('end', () => {
             return;
         }
 
-        // Lógica de Resumo Inteligente (Smart Summary)
-        let notificationText = "Tarefa concluída.";
+        // Lógica de Resumo Inteligente (Smart Summary - Clean & Concise)
+        let notificationText = "任务已完成。";
         if (data.error) {
-            notificationText = data.error.substring(0, 100);
+            notificationText = data.error.trim().substring(0, 85);
         } else if (agentResponse) {
-            const cleanResponse = agentResponse.trim()
-                .replace(/```[\s\S]*?```/g, '[Código]') // Oculta blocos de código
-                .replace(/^#+\s+/gm, '') 
-                .replace(/\*\*|\*/g, '')
-                .replace(/\s\s+/g, ' '); // Normaliza múltiplos espaços/quebras em um só
+            let text = agentResponse.trim()
+                .replace(/```[\s\S]*?```/g, '') // Remove code blocks
+                .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Convert [label](url) -> label (removes file:/// links)
+                .replace(/https?:\/\/\S+/g, '') // Remove standalone urls
+                .replace(/<[^>]+>/g, '') // Remove HTML tags
+                .replace(/`([^`]+)`/g, '$1') // Inline code `code` -> code
+                .replace(/\*\*|__|\*|_|~~/g, '') // Remove bold, italic, strikethrough
+                .replace(/^[ \t]*[#>\-\*]+[ \t]+/gm, ''); // Remove headers, blockquotes, list markers
 
-            // Tenta achar padrões de conclusão (Summary, Conclusion, Result, etc.)
-            const summaryMatch = cleanResponse.match(/(?:Summary|Result|Conclusion|Resumo|Resultado|Conclusão):\s*(.*)/i);
-            
-            if (summaryMatch && summaryMatch[1]) {
-                notificationText = summaryMatch[1].trim();
-            } else {
-                // Caso contrário, tenta pegar as últimas duas frases (que geralmente concluem a tarefa)
-                const sentences = cleanResponse.split(/[.!?]\s+/).filter(s => s.trim().length > 5);
-                if (sentences.length > 1) {
-                    notificationText = sentences.slice(-2).join('. ').trim();
-                } else {
-                    notificationText = cleanResponse.substring(0, 100);
+            const lines = text.split('\n')
+                .map(l => l.trim())
+                .filter(l => l.length > 0);
+
+            if (lines.length > 0) {
+                let chosenLine = lines[0];
+                const isGenericHeader = /^(?:结论|总结|结果|概述|概要|说明|Summary|Result|Conclusion|Overview|Scope\s*&\s*Overview)[：:]?$/i.test(chosenLine);
+                if (isGenericHeader && lines.length > 1) {
+                    chosenLine = lines[1];
+                } else if (lines.length > 1 && chosenLine.length < 20 && lines[1].length > 10) {
+                    if (!/(?:已|完成|成功|失败|failed|finished|completed|done)/i.test(chosenLine)) {
+                        chosenLine = lines[1];
+                    }
                 }
-            }
-            
-            // Limite final de caracteres para o Toast
-            if (notificationText.length > 110) {
-                notificationText = notificationText.substring(0, 107) + "...";
+
+                chosenLine = chosenLine.replace(/^(?:结论|总结|结果|Summary|Result|Conclusion)[：:\s]+/i, '');
+
+                // Split into sentences using Chinese & English punctuation
+                const sentences = chosenLine.split(/(?<=[。！？!?])\s*/).filter(s => s.trim().length > 3);
+                let candidate = sentences.length > 0 ? sentences[0].trim() : chosenLine;
+                candidate = candidate.replace(/\s+/g, ' ');
+
+                if (candidate.length > 85) {
+                    candidate = candidate.substring(0, 82) + '...';
+                }
+                notificationText = candidate || "任务已完成。";
             }
         }
 
@@ -104,11 +115,11 @@ process.stdin.on('end', () => {
                         data.failed === true || 
                         (agentResponse && /^(Error|Failed|Exception|Falha|Erro):/i.test(agentResponse.trim()));
 
-        let notificationTitle = `Antigravity: Finished (${Math.round(durationSeconds)}s)`;
+        let notificationTitle = `Antigravity CLI: Finished (${Math.round(durationSeconds)}s)`;
         let audioSrc = "ms-winsoundevent:Notification.SMS";
 
         if (isError) {
-            notificationTitle = `Antigravity: Task Failed`;
+            notificationTitle = `Antigravity CLI: Task Failed`;
             audioSrc = "ms-winsoundevent:Notification.Default"; 
         }
 
