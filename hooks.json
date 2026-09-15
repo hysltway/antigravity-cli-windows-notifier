@@ -1,0 +1,27 @@
+{
+  "antigravity-windows-notifier": {
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "node hooks/mark-start.js"
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "command": "node hooks/windows-notify.js"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "ask_question|ask_user",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node hooks/windows-ask-notify.js"
+          }
+        ]
+      }
+    ]
+  }
+}
