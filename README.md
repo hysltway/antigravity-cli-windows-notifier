@@ -81,9 +81,9 @@ Manage notifications directly within the CLI:
 
 ## Architecture
 
-- **`BeforeAgent`**: Persists start timestamp (ms) to `%TEMP%`.
-- **`AfterAgent`**: Handles duration calculation, error detection heuristics, and triggers the Windows Toast via PowerShell.
-- **`BeforeTool` & `Notification`**: Intercepts `ask_user` and `ToolPermission` events while preventing duplicate notifications.
+- **`PreInvocation`**: Persists start timestamp (ms) to `%TEMP%` keyed by `conversationId`.
+- **`Stop`**: Handles duration calculation, extracts smart summary from `transcriptPath` (or error detection), and triggers the Windows Toast via PowerShell.
+- **`PreToolUse`**: Intercepts `ask_question` and `ask_user` interaction events to alert the user immediately.
 
 ## Contributing
 
