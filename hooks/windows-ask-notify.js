@@ -18,31 +18,38 @@ process.stdin.on('end', () => {
         }
 
         const data = JSON.parse(input);
-        const toolName = data.tool_name;
+        const toolName = data.toolCall?.name || data.tool_name || '';
+        const toolArgs = data.toolCall?.args || data.tool_input || {};
         const notificationType = data.notification_type; 
         
         let notificationTitle = "";
         let notificationText = "";
 
-        // Se for o pedido de permissão genérico para o ask_user, ignora (para não duplicar)
-        if (notificationType === 'ToolPermission' && toolName === 'ask_user') {
+        // Se for o pedido de permissão genérico para ask_user/ask_question, ignora (para não duplicar)
+        if (notificationType === 'ToolPermission' && (toolName === 'ask_user' || toolName === 'ask_question')) {
             process.stdout.write(JSON.stringify({ decision: "allow" }));
             return;
         }
 
         const path = require('path');
         const os = require('os');
-        const logoPath = path.join(os.homedir(), '.gemini', 'antigravity-cli', 'assets', 'antigravity-logo.png');
+        const fs = require('fs');
+        const localLogo = path.resolve(__dirname, '..', 'assets', 'antigravity-logo.png');
+        const fallbackLogo = path.join(os.homedir(), '.gemini', 'antigravity-cli', 'assets', 'antigravity-logo.png');
+        const logoPath = fs.existsSync(localLogo) ? localLogo : fallbackLogo;
 
-        // Pergunta direta ao usuário (ask_user)
-        if (toolName === 'ask_user' && data.tool_input && data.tool_input.questions) {
-            const firstQuestion = data.tool_input.questions[0].question;
-            if (firstQuestion) {
-                notificationTitle = "Antigravity: Question";
-                notificationText = firstQuestion.trim()
-                    .replace(/\s\s+/g, ' ') // Normaliza espaços
-                    .substring(0, 120);
+        // Pergunta direta ao usuário (ask_question ou ask_user)
+        if (toolName === 'ask_user' || toolName === 'ask_question') {
+            let question = '';
+            if (toolArgs.questions && Array.isArray(toolArgs.questions) && toolArgs.questions.length > 0) {
+                question = toolArgs.questions[0].question || '';
+            } else if (typeof toolArgs.question === 'string') {
+                question = toolArgs.question;
             }
+            notificationTitle = "Antigravity: Question";
+            notificationText = (question || "Waiting for your input").trim()
+                .replace(/\s\s+/g, ' ')
+                .substring(0, 120);
         } 
         // Pedido de permissão para outras ferramentas
         else if (notificationType === 'ToolPermission') {

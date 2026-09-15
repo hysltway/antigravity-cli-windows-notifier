@@ -22,12 +22,27 @@ process.stdin.on('end', () => {
         }
 
         const data = JSON.parse(input);
-        const sessionId = data.session_id;
-        const agentResponse = data.prompt_response;
+        const convId = data.conversationId || data.session_id;
+        let agentResponse = data.prompt_response;
+
+        if (!agentResponse && data.transcriptPath && fs.existsSync(data.transcriptPath)) {
+            try {
+                const logLines = fs.readFileSync(data.transcriptPath, 'utf8').trim().split('\n');
+                for (let i = logLines.length - 1; i >= 0; i--) {
+                    try {
+                        const entry = JSON.parse(logLines[i]);
+                        if (entry.type === 'PLANNER_RESPONSE' && entry.content && entry.content.trim()) {
+                            agentResponse = entry.content;
+                            break;
+                        }
+                    } catch (_) {}
+                }
+            } catch (_) {}
+        }
 
         let durationSeconds = 0;
-        if (sessionId) {
-            const tempFile = path.join(os.tmpdir(), `antigravity-start-${sessionId}.txt`);
+        if (convId) {
+            const tempFile = path.join(os.tmpdir(), `antigravity-start-${convId}.txt`);
             if (fs.existsSync(tempFile)) {
                 try {
                     const content = fs.readFileSync(tempFile, 'utf8').trim();
@@ -41,13 +56,15 @@ process.stdin.on('end', () => {
 
         // Notifica apenas se demorar mais que o threshold ou se não houver timer (teste)
         if (durationSeconds > 0 && durationSeconds < THRESHOLD_SECONDS) {
-            process.stdout.write(JSON.stringify({ decision: "allow" }));
+            process.stdout.write('{}');
             return;
         }
 
         // Lógica de Resumo Inteligente (Smart Summary)
         let notificationText = "Tarefa concluída.";
-        if (agentResponse) {
+        if (data.error) {
+            notificationText = data.error.substring(0, 100);
+        } else if (agentResponse) {
             const cleanResponse = agentResponse.trim()
                 .replace(/```[\s\S]*?```/g, '[Código]') // Oculta blocos de código
                 .replace(/^#+\s+/gm, '') 
@@ -75,7 +92,9 @@ process.stdin.on('end', () => {
             }
         }
 
-        const isError = data.status === 'error' || 
+        const isError = Boolean(data.error) ||
+                        data.terminationReason === 'error' ||
+                        data.status === 'error' || 
                         data.failed === true || 
                         (agentResponse && /^(Error|Failed|Exception|Falha|Erro):/i.test(agentResponse.trim()));
 
@@ -87,7 +106,9 @@ process.stdin.on('end', () => {
             audioSrc = "ms-winsoundevent:Notification.Default"; 
         }
 
-        const logoPath = path.join(os.homedir(), '.gemini', 'antigravity-cli', 'assets', 'antigravity-logo.png');
+        const localLogo = path.resolve(__dirname, '..', 'assets', 'antigravity-logo.png');
+        const fallbackLogo = path.join(os.homedir(), '.gemini', 'antigravity-cli', 'assets', 'antigravity-logo.png');
+        const logoPath = fs.existsSync(localLogo) ? localLogo : fallbackLogo;
         const iconTag = SHOW_ICON ? `<image placement="appLogoOverride" src="file:///${logoPath.replace(/\\/g, '/')}" />` : '';
 
         const psScript = `
@@ -116,10 +137,10 @@ process.stdin.on('end', () => {
         `;
 
         execFile('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', psScript], () => {
-            process.stdout.write(JSON.stringify({ decision: "allow" }));
+            process.stdout.write('{}');
         });
 
     } catch (e) {
-        process.stdout.write(JSON.stringify({ decision: "allow" }));
+        process.stdout.write('{}');
     }
 });

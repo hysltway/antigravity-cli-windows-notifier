@@ -16,13 +16,14 @@ process.stdin.on('end', () => {
     try {
         if (!input.trim()) return;
         const data = JSON.parse(input);
-        const sessionId = data.session_id;
-        if (sessionId) {
-            const tempFile = path.join(os.tmpdir(), `antigravity-start-${sessionId}.txt`);
+        const convId = data.conversationId || data.session_id;
+        if (convId) {
+            const tempFile = path.join(os.tmpdir(), `antigravity-start-${convId}.txt`);
             const ms = Date.now().toString();
             fs.writeFileSync(tempFile, ms);
         }
     } catch (e) {
-        // Falha silenciosa para não interromper o CLI
+        // Silent fail
     }
+    process.stdout.write('{}');
 });
