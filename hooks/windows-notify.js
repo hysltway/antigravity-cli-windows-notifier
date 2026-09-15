@@ -17,11 +17,17 @@ process.stdin.on('end', () => {
         fs.appendFileSync(debugLog, `[${new Date().toISOString()}] Hook chamado com input: ${input.substring(0, 100)}...\n`);
 
         if (!input.trim()) {
-            process.stdout.write(JSON.stringify({ decision: "allow" }));
+            process.stdout.write('{}');
             return;
         }
 
         const data = JSON.parse(input);
+        const targetPath = `${data.transcriptPath || ''} ${data.artifactDirectoryPath || ''}`;
+        if (targetPath && !targetPath.includes('antigravity-cli')) {
+            process.stdout.write('{}');
+            return;
+        }
+
         const convId = data.conversationId || data.session_id;
         let agentResponse = data.prompt_response;
 

@@ -16,6 +16,12 @@ process.stdin.on('end', () => {
     try {
         if (!input.trim()) return;
         const data = JSON.parse(input);
+        const targetPath = `${data.transcriptPath || ''} ${data.artifactDirectoryPath || ''}`;
+        if (targetPath && !targetPath.includes('antigravity-cli')) {
+            process.stdout.write('{}');
+            return;
+        }
+
         const convId = data.conversationId || data.session_id;
         if (convId) {
             const tempFile = path.join(os.tmpdir(), `antigravity-start-${convId}.txt`);

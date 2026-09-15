@@ -18,6 +18,12 @@ process.stdin.on('end', () => {
         }
 
         const data = JSON.parse(input);
+        const targetPath = `${data.transcriptPath || ''} ${data.artifactDirectoryPath || ''}`;
+        if (targetPath && !targetPath.includes('antigravity-cli')) {
+            process.stdout.write(JSON.stringify({ decision: "allow" }));
+            return;
+        }
+
         const toolName = data.toolCall?.name || data.tool_name || '';
         const toolArgs = data.toolCall?.args || data.tool_input || {};
         const notificationType = data.notification_type; 

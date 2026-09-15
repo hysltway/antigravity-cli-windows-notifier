@@ -10,6 +10,7 @@ This project implements a professional notification system for the **Antigravity
 
 - **Completion & Failure Alerts**: Native Toast notifications for tasks. Automatically detects execution failures and changes alert sounds/titles accordingly.
 - **Interactive Prompts**: Immediate alerts for `ask_user` tool calls and `ToolPermission` requests.
+- **Desktop App Isolation**: Automatically detects execution context (`antigravity-cli`) and silently yields in Antigravity Desktop App / IDE to prevent duplicate notifications.
 - **Native Audio**: Uses Windows native `SMS` notification sound for optimal user experience.
 - **CLI Configuration**: Adjust settings like the time threshold directly from your terminal.
 
